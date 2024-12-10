@@ -1,0 +1,40 @@
+#include <stdio.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+
+struct message {
+    long msg_type;
+    char msg_text[100];
+};
+
+int main() {
+    key_t key = ftok("msgqueue", 65); 
+    int msgid = msgget(key, 0666 | IPC_CREAT); // Create message queue
+
+    if (fork() == 0) {
+        struct message msg;
+        msg.msg_type = 1;
+
+        printf("Child process: Sending message to the queue...\n");
+        strcpy(msg.msg_text, "Hello from the child process!");
+        msgsnd(msgid, &msg, sizeof(msg.msg_text), 0);
+        printf("Child process: Message sent.\n");
+
+        exit(0);
+    } else {
+        wait(NULL); 
+
+        struct message msg;
+        printf("Parent process: Receiving message from the queue...\n");
+        msgrcv(msgid, &msg, sizeof(msg.msg_text), 1, 0);
+        printf("Parent process: Message received: %s\n", msg.msg_text);
+
+        msgctl(msgid, IPC_RMID, NULL); 
+    }
+
+    return 0;
+}
